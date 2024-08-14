@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Routes,
   Route,
@@ -8,30 +8,41 @@ import {
 } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import "reactjs-popup/dist/index.css";
-import { fetchMovies } from "./data/moviesSlice";
+import moviesSlice, { fetchMovies } from "./data/moviesSlice.js";
 import {
   ENDPOINT_SEARCH,
   ENDPOINT_DISCOVER,
   ENDPOINT,
   API_KEY,
-} from "./constants";
-import Header from "./components/Header";
-import Movies from "./components/Movies";
-import Starred from "./components/Starred";
-import WatchLater from "./components/WatchLater";
-import YouTubePlayer from "./components/YoutubePlayer";
+} from "./constants.js";
+import Header from "./components/Header.jsx";
+import Movies from "./components/Movies.jsx";
+import Starred from "./components/Starred.jsx";
+import WatchLater from "./components/WatchLater.jsx";
+import YouTubePlayer from "./components/YoutubePlayer.jsx";
 import "./app.scss";
-import Modal from "./components/Modal";
+import Modal from "./components/Modal.jsx";
+import { useInfiniteScroll } from "./useInfiniteScroll.tsx";
 
 const App = () => {
   const state = useSelector((state) => state);
+  const { setPage } = moviesSlice.actions;
   const { movies } = state;
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get("search");
   const [videoKey, setVideoKey] = useState(null);
   const [isOpen, setOpen] = useState(false);
+  const [isLoading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const targetRef = useRef(null);
+
+  const scrollOptions = {
+    root: null,
+    rootMargin: "0px",
+    threshold: 1.0,
+  };
 
   const closeModal = () => {
     document.body.setAttribute("style", "");
@@ -47,13 +58,23 @@ const App = () => {
   const closeCard = () => {};
 
   const getSearchResults = (query) => {
+    if (
+      isLoading ||
+      movies.movies.length === 0 ||
+      movies.page >= movies.total_pages
+    )
+      return;
+    setLoading(true);
+
+    const queryPage = `&page=${movies.page ?? 1}`;
     if (query !== "") {
-      dispatch(fetchMovies(`${ENDPOINT_SEARCH}&query=` + query));
+      dispatch(fetchMovies(`${ENDPOINT_SEARCH}${queryPage}&query=` + query));
       setSearchParams(createSearchParams({ search: query }));
     } else {
-      dispatch(fetchMovies(ENDPOINT_DISCOVER));
+      dispatch(fetchMovies(ENDPOINT_DISCOVER + queryPage));
       setSearchParams();
     }
+    setLoading(false);
   };
 
   const searchMovies = (query) => {
@@ -62,11 +83,17 @@ const App = () => {
   };
 
   const getMovies = () => {
+    const queryPage = `&page=${movies.page}`;
+    setLoading(true);
     if (searchQuery) {
-      dispatch(fetchMovies(`${ENDPOINT_SEARCH}&query=` + searchQuery));
+      dispatch(
+        fetchMovies(`${ENDPOINT_SEARCH}${queryPage}&query=` + searchQuery)
+      );
     } else {
-      dispatch(fetchMovies(ENDPOINT_DISCOVER));
+      dispatch(fetchMovies(ENDPOINT_DISCOVER + queryPage));
     }
+    setLoading(false);
+    dispatch(setPage(movies.page + 1));
   };
 
   const viewTrailer = (movie) => {
@@ -86,6 +113,8 @@ const App = () => {
       setVideoKey(trailer ? trailer.key : videoData.videos.results[0].key);
     }
   };
+
+  useInfiniteScroll(targetRef, scrollOptions, getMovies, isLoading);
 
   useEffect(() => {
     getMovies();
@@ -125,6 +154,7 @@ const App = () => {
                 movies={movies}
                 viewTrailer={viewTrailer}
                 closeCard={closeCard}
+                targetRef={targetRef}
               />
             }
           />

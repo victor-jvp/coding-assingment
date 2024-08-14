@@ -10,7 +10,7 @@ const Modal = ({ isOpen, content, handleClose }) => {
       <div className="modal-content">{content}</div>
       <div className="modal-footer">
         <button className="btn btn-light" onClick={() => handleClose()}>
-          <i class="bi bi-x-octagon-fill"></i> Close
+          <i className="bi bi-x-octagon-fill"></i> Close
         </button>
       </div>
     </section>
