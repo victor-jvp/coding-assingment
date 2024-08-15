@@ -11,26 +11,33 @@ const moviesSlice = createSlice({
     movies: [],
     fetchStatus: "",
     page: 1,
-    total_pages: 1,
+    next: true,
   },
   reducers: {
     setPage: (state, page) => {
       state.page = page.payload;
     },
+    setMovies: (state, movies) => {
+      state.movies = movies.payload;
+    },
+    setNext: (state, next) => {
+      state.next = next.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
       .addCase(fetchMovies.fulfilled, (state, action) => {
-        state.fetchStatus = "success";
-        state.page = action.payload.page;
-        state.total_pages = action.payload.total_pages;
-        if (action.payload.page === 1) {
-          state.movies = action.payload.results;
-        } else {
-          state.movies = [
-            ...new Set([...state.movies, ...action.payload.results]),
-          ];
+        const { results, page, total_pages } = action.payload;
+        if (results.length > 0) {
+          if (page === 1) {
+            state.movies = results;
+          } else {
+            state.movies = [...new Set([...state.movies, ...results])];
+          }
+          state.next = page < total_pages;
+          state.page = page;
         }
+        state.fetchStatus = "success";
       })
       .addCase(fetchMovies.pending, (state) => {
         state.fetchStatus = "loading";

@@ -26,7 +26,7 @@ import { useInfiniteScroll } from "./useInfiniteScroll.tsx";
 
 const App = () => {
   const state = useSelector((state) => state);
-  const { setPage } = moviesSlice.actions;
+  const { setPage, setMovies, setNext } = moviesSlice.actions;
   const { movies } = state;
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -40,7 +40,7 @@ const App = () => {
 
   const scrollOptions = {
     root: null,
-    rootMargin: "0px",
+    rootMargin: "10px",
     threshold: 1.0,
   };
 
@@ -58,15 +58,10 @@ const App = () => {
   const closeCard = () => {};
 
   const getSearchResults = (query) => {
-    if (
-      isLoading ||
-      movies.movies.length === 0 ||
-      movies.page >= movies.total_pages
-    )
-      return;
+    if (isLoading || !movies.next) return;
+    dispatch(setMovies([]));
     setLoading(true);
-
-    const queryPage = `&page=${movies.page ?? 1}`;
+    const queryPage = `&page=1`;
     if (query !== "") {
       dispatch(fetchMovies(`${ENDPOINT_SEARCH}${queryPage}&query=` + query));
       setSearchParams(createSearchParams({ search: query }));
@@ -80,9 +75,14 @@ const App = () => {
   const searchMovies = (query) => {
     navigate("/");
     getSearchResults(query);
+    if (query === "") {
+      dispatch(setNext(true));
+      getMovies();
+    }
   };
 
   const getMovies = () => {
+    if (isLoading || !movies.next) return;
     const queryPage = `&page=${movies.page}`;
     setLoading(true);
     if (searchQuery) {
